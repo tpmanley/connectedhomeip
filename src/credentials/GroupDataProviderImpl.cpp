@@ -15,6 +15,7 @@
  *    limitations under the License.
  */
 #include <credentials/GroupDataProviderImpl.h>
+#include <crypto/MatterKeyLog.h>
 #include <crypto/CHIPCryptoPAL.h>
 #include <lib/core/TLV.h>
 #include <lib/support/CodeUtils.h>
@@ -1661,6 +1662,10 @@ constexpr size_t GroupDataProvider::EpochKey::kLengthBytes;
 CHIP_ERROR GroupDataProviderImpl::SetKeySet(chip::FabricIndex fabric_index, const ByteSpan & compressed_fabric_id,
                                             const KeySet & in_keyset)
 {
+    // Optional epoch-key export for offline analysis (no-op unless MATTER_KEYLOG is set).
+    for (size_t i = 0; i < in_keyset.num_keys_used && i < KeySet::kEpochKeysMax; i++)
+        MatterKeyLogGroupEpochKey(compressed_fabric_id, ByteSpan(in_keyset.epoch_keys[i].key));
+
     VerifyOrReturnError(IsInitialized(), CHIP_ERROR_INTERNAL);
     VerifyOrReturnError(in_keyset.num_keys_used >= 1 && in_keyset.num_keys_used <= KeySet::kEpochKeysMax,
                         CHIP_ERROR_INVALID_ARGUMENT);

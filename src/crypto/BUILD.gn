@@ -161,6 +161,8 @@ static_library("crypto") {
   sources = [
     "CHIPCryptoPAL.cpp",
     "DefaultSessionKeystore.h",
+    "MatterKeyLog.cpp",
+    "MatterKeyLog.h",
     "PersistentStorageOperationalKeystore.h",
     "RandUtils.cpp",
     "RandUtils.h",

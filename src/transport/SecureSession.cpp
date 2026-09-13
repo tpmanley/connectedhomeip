@@ -15,6 +15,7 @@
  */
 
 #include <access/AuthMode.h>
+#include <crypto/MatterKeyLog.h>
 #include <transport/SecureSession.h>
 #include <transport/SecureSessionTable.h>
 
@@ -53,6 +54,12 @@ void SecureSession::Activate(const ScopedNodeId & localNode, const ScopedNodeId 
 
     if (mSecureSessionType == Type::kCASE)
         mTable.NewerSessionAvailable(this);
+
+    // Optional session-key export for offline analysis (no-op unless
+    // MATTER_KEYLOG is set); only for encrypted unicast sessions.
+    if ((mSecureSessionType == Type::kCASE || mSecureSessionType == Type::kPASE) && mCryptoContext.IsKeyAvailable())
+        MatterKeyLogCaseSession(mLocalSessionId, peerSessionId, mLocalNodeId, mPeerNodeId,
+                                mCryptoContext.GetEncryptionKey(), mCryptoContext.GetDecryptionKey());
 
     ChipLogDetail(Inet, "SecureSession[%p]: Activated - Type:%d LSID:%d", this, to_underlying(mSecureSessionType), mLocalSessionId);
 }

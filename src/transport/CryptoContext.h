@@ -158,6 +158,12 @@ public:
 
     bool IsResponder() const { return mKeyAvailable && mSessionRole == SessionRole::kResponder; }
 
+    // Accessors for optional key-log export (see MatterKeyLog). Only valid when
+    // a key is available; the handles are opaque unless a raw keystore is used.
+    bool IsKeyAvailable() const { return mKeyAvailable; }
+    const Crypto::Aes128KeyHandle & GetEncryptionKey() const { return mEncryptionKey; }
+    const Crypto::Aes128KeyHandle & GetDecryptionKey() const { return mDecryptionKey; }
+
 private:
     CHIP_ERROR InitTestMode(Crypto::SessionKeystore & keystore, Crypto::Aes128KeyHandle & i2rKey, Crypto::Aes128KeyHandle & r2iKey);
 
