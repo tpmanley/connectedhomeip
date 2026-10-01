@@ -64,6 +64,7 @@ buildconfig_header("crypto_buildconfig") {
     "CHIP_CRYPTO_BORINGSSL=${chip_crypto_boringssl}",
     "CHIP_CRYPTO_PLATFORM=${chip_crypto_platform}",
     "CHIP_OP_KEYSTORE_ELE=${chip_with_imx_ele}",
+    "CHIP_CRYPTO_SESSION_KEY_LOG=${chip_enable_session_key_log}",
   ]
 }
 
@@ -180,7 +181,12 @@ static_library("crypto") {
     "PersistentStorageOperationalKeystore.h",
     "RandUtils.cpp",
     "RandUtils.h",
+    "SessionKeyLog.h",
   ]
+
+  if (chip_enable_session_key_log) {
+    sources += [ "SessionKeyLog.cpp" ]
+  }
 
   if (chip_crypto_keystore == "psa") {
     sources += [

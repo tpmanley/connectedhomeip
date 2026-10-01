@@ -46,6 +46,11 @@ declare_args() {
   # see https://www.nxp.com/products/nxp-product-information/nxp-product-programs/edgelock-secure-enclave:EDGELOCK-SECURE-ENCLAVE
   # to get more information.
   chip_with_imx_ele = false
+
+  # Export message encryption keys through Crypto::SessionKeyLogDelegate so that
+  # captured traffic can be decrypted offline. Debug only: exposes secret keys.
+  # Requires the raw session keystore.
+  chip_enable_session_key_log = false
 }
 
 if (chip_crypto == "") {
@@ -77,6 +82,9 @@ if (chip_crypto_keystore == "") {
 assert(chip_crypto_keystore == "psa" || chip_crypto_keystore == "raw" ||
            chip_crypto_keystore == "app",
        "Please select a valid crypto keystore: psa, raw, app")
+
+assert(!chip_enable_session_key_log || chip_crypto_keystore == "raw",
+       "chip_enable_session_key_log requires the raw session keystore")
 
 assert(
     !chip_external_mbedtls || chip_crypto == "mbedtls" || chip_crypto == "psa",

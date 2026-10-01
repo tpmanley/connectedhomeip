@@ -158,6 +158,20 @@ public:
 
     bool IsResponder() const { return mKeyAvailable && mSessionRole == SessionRole::kResponder; }
 
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    /**
+     * Report both message keys of a CASE or PASE session to the session key log delegate, if one is set
+     * and keys are available.
+     *
+     * Messages carry the receiver's session ID: outbound messages (encryption key) carry the peer's
+     * session ID and are sent by the local node; inbound messages (decryption key) carry the local
+     * session ID and are sent by the peer.
+     */
+    void ReportCaseKeysToSessionKeyLog(uint16_t localSessionId, uint16_t peerSessionId, NodeId localNodeId,
+                                       NodeId peerNodeId) const;
+    void ReportPaseKeysToSessionKeyLog(uint16_t localSessionId, uint16_t peerSessionId) const;
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
+
 private:
     CHIP_ERROR InitTestMode(Crypto::SessionKeystore & keystore, Crypto::Aes128KeyHandle & i2rKey, Crypto::Aes128KeyHandle & r2iKey);
 

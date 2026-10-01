@@ -54,6 +54,18 @@ void SecureSession::Activate(const ScopedNodeId & localNode, const ScopedNodeId 
     if (mSecureSessionType == Type::kCASE)
         mTable.NewerSessionAvailable(this);
 
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    if (mSecureSessionType == Type::kCASE)
+    {
+        mCryptoContext.ReportCaseKeysToSessionKeyLog(mLocalSessionId, mPeerSessionId, mLocalNodeId, mPeerNodeId);
+    }
+    else
+    {
+        // PASE messages use the undefined node ID in the nonce, so no node IDs are reported.
+        mCryptoContext.ReportPaseKeysToSessionKeyLog(mLocalSessionId, mPeerSessionId);
+    }
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
+
     ChipLogDetail(Inet, "SecureSession[%p]: Activated - Type:%d LSID:%d", this, to_underlying(mSecureSessionType), mLocalSessionId);
 }
 

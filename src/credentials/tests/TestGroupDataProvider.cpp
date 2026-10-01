@@ -25,6 +25,7 @@
 
 #include <credentials/GroupDataProviderImpl.h>
 #include <crypto/DefaultSessionKeystore.h>
+#include <crypto/SessionKeyLog.h>
 #include <lib/core/StringBuilderAdapters.h>
 #include <lib/core/TLV.h>
 #include <lib/support/CHIPMem.h>
@@ -1343,6 +1344,56 @@ TEST_F(TestGroupDataProvider, TestGroupDecryption)
     EXPECT_EQ(count, total);
     it->Release();
 }
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+namespace {
+
+class EpochKeyRecorder : public chip::Crypto::SessionKeyLogDelegate
+{
+public:
+    void OnCaseSessionKey(uint16_t sessionId, chip::NodeId sourceNodeId, chip::Crypto::SessionKeySpan key) override {}
+    void OnPaseSessionKey(uint16_t sessionId, chip::Crypto::SessionKeySpan key) override {}
+
+    void OnGroupEpochKey(chip::FixedByteSpan<chip::Crypto::kCompressedFabricIdentifierSize> compressedFabricId,
+                         chip::Crypto::SessionKeySpan epochKey) override
+    {
+        ASSERT_LT(mCount, KeySet::kEpochKeysMax);
+        EXPECT_TRUE(compressedFabricId.data_equal(kCompressedFabricId1));
+        memcpy(mKeys[mCount++], epochKey.data(), epochKey.size());
+    }
+
+    uint8_t mKeys[KeySet::kEpochKeysMax][EpochKey::kLengthBytes];
+    size_t mCount = 0;
+};
+
+} // namespace
+
+TEST_F(TestGroupDataProvider, TestKeySetReportedToSessionKeyLog)
+{
+    GroupDataProvider * provider = GetGroupDataProvider();
+    ASSERT_NE(provider, nullptr);
+    ResetProvider(provider);
+
+    EpochKeyRecorder recorder;
+    chip::Crypto::SetSessionKeyLogDelegate(&recorder);
+
+    EXPECT_EQ(provider->SetKeySet(kFabric1, kCompressedFabricId1, kKeySet2), CHIP_NO_ERROR);
+    ASSERT_EQ(recorder.mCount, kKeySet2.num_keys_used);
+    for (size_t i = 0; i < recorder.mCount; i++)
+    {
+        EXPECT_EQ(memcmp(recorder.mKeys[i], kKeySet2.epoch_keys[i].key, EpochKey::kLengthBytes), 0);
+    }
+
+    // Key sets the provider rejects are not reported.
+    KeySet unsupportedPolicy(kKeysetId4, SecurityPolicy::kCacheAndSync, 1);
+    EXPECT_NE(provider->SetKeySet(kFabric1, kCompressedFabricId1, unsupportedPolicy), CHIP_NO_ERROR);
+    EXPECT_EQ(recorder.mCount, kKeySet2.num_keys_used);
+
+    chip::Crypto::SetSessionKeyLogDelegate(nullptr);
+    EXPECT_EQ(provider->SetKeySet(kFabric1, kCompressedFabricId1, kKeySet1), CHIP_NO_ERROR);
+    EXPECT_EQ(recorder.mCount, kKeySet2.num_keys_used);
+}
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 } // namespace TestGroups
 } // namespace app

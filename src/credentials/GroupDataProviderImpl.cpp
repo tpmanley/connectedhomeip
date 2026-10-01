@@ -16,6 +16,7 @@
  */
 #include <credentials/GroupDataProviderImpl.h>
 #include <crypto/CHIPCryptoPAL.h>
+#include <crypto/SessionKeyLog.h>
 #include <lib/core/TLV.h>
 #include <lib/support/CodeUtils.h>
 #include <lib/support/CommonPersistentData.h>
@@ -1698,19 +1699,30 @@ CHIP_ERROR GroupDataProviderImpl::SetKeySet(chip::FabricIndex fabric_index, cons
     if (found)
     {
         // Update existing keyset info, keep next
-        return keyset.Save(mStorage);
+        ReturnErrorOnFailure(keyset.Save(mStorage));
+    }
+    else
+    {
+        // New keyset
+        VerifyOrReturnError(fabric.keyset_count < mMaxGroupKeysPerFabric, CHIP_ERROR_INVALID_LIST_LENGTH);
+
+        // Insert first
+        keyset.next = fabric.first_keyset;
+        ReturnErrorOnFailure(keyset.Save(mStorage));
+        // Update fabric
+        fabric.keyset_count++;
+        fabric.first_keyset = in_keyset.keyset_id;
+        ReturnErrorOnFailure(fabric.Save(mStorage));
     }
 
-    // New keyset
-    VerifyOrReturnError(fabric.keyset_count < mMaxGroupKeysPerFabric, CHIP_ERROR_INVALID_LIST_LENGTH);
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    for (size_t i = 0; i < in_keyset.num_keys_used; i++)
+    {
+        Crypto::ReportGroupEpochKey(compressed_fabric_id, ByteSpan(in_keyset.epoch_keys[i].key));
+    }
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
-    // Insert first
-    keyset.next = fabric.first_keyset;
-    ReturnErrorOnFailure(keyset.Save(mStorage));
-    // Update fabric
-    fabric.keyset_count++;
-    fabric.first_keyset = in_keyset.keyset_id;
-    return fabric.Save(mStorage);
+    return CHIP_NO_ERROR;
 }
 
 CHIP_ERROR GroupDataProviderImpl::GetKeySet(chip::FabricIndex fabric_index, uint16_t target_id, KeySet & out_keyset)

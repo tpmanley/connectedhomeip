@@ -23,6 +23,7 @@
  */
 
 #include <crypto/CHIPCryptoPAL.h>
+#include <crypto/SessionKeyLog.h>
 #include <crypto/SessionKeystore.h>
 #include <lib/core/CHIPEncoding.h>
 #include <lib/support/BufferWriter.h>
@@ -149,6 +150,37 @@ CHIP_ERROR CryptoContext::InitTestMode(Crypto::SessionKeystore & keystore, Crypt
                                       mAttestationChallenge);
 }
 #endif // CHIP_CONFIG_SECURITY_TEST_MODE
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+namespace {
+
+// The raw session keystore holds key bytes directly in the handle.
+SessionKeySpan RawKeyBytes(const Aes128KeyHandle & key)
+{
+    return SessionKeySpan(key.As<Symmetric128BitsKeyByteArray>());
+}
+
+} // namespace
+
+void CryptoContext::ReportCaseKeysToSessionKeyLog(uint16_t localSessionId, uint16_t peerSessionId, NodeId localNodeId,
+                                                  NodeId peerNodeId) const
+{
+    SessionKeyLogDelegate * delegate = GetSessionKeyLogDelegate();
+    VerifyOrReturn(delegate != nullptr && mKeyAvailable);
+
+    delegate->OnCaseSessionKey(peerSessionId, localNodeId, RawKeyBytes(mEncryptionKey));
+    delegate->OnCaseSessionKey(localSessionId, peerNodeId, RawKeyBytes(mDecryptionKey));
+}
+
+void CryptoContext::ReportPaseKeysToSessionKeyLog(uint16_t localSessionId, uint16_t peerSessionId) const
+{
+    SessionKeyLogDelegate * delegate = GetSessionKeyLogDelegate();
+    VerifyOrReturn(delegate != nullptr && mKeyAvailable);
+
+    delegate->OnPaseSessionKey(peerSessionId, RawKeyBytes(mEncryptionKey));
+    delegate->OnPaseSessionKey(localSessionId, RawKeyBytes(mDecryptionKey));
+}
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 CHIP_ERROR CryptoContext::BuildNonce(NonceView nonce, uint8_t securityFlags, uint32_t messageCounter, NodeId nodeId)
 {

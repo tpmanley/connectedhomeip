@@ -637,6 +637,9 @@ class HostBuilder(GnBuilder):
         if app == HostApp.TESTS:
             self.extra_gn_options.append('chip_build_tests=true')
             self.build_command = 'check'
+            # Session key log requires the raw keystore, which PSA builds do not use.
+            if crypto_library != HostCryptoLibrary.PSA:
+                self.extra_gn_options.append('chip_enable_session_key_log=true')
 
         if app == HostApp.EFR32_TEST_RUNNER:
             self.build_command = 'runner'
