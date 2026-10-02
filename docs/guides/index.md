@@ -20,5 +20,6 @@ and features.
 -   [Access Control](./access-control-guide.md)
 -   [Data model errata](./data_model_errata.md)
 -   [Matter IDL tooling and validation](./matter_idl_tooling.md)
+-   [Session key log](./session_key_log.md)
 -   [Writing clusters](./writing_clusters.md)
 -   [Migrating to code-driven clusters](./migrating_ember_cluster_to_code_driven.md)

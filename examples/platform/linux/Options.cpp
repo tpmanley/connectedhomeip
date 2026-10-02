@@ -102,6 +102,9 @@ enum
     kDeviceOption_TraceFile,
     kDeviceOption_TraceLog,
     kDeviceOption_TraceDecode,
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    kDeviceOption_SessionKeyLog,
+#endif
 #if CHIP_CONFIG_USE_ACCESS_RESTRICTIONS
     kDeviceOption_CommissioningArlEntries,
     kDeviceOption_ArlEntries,
@@ -222,6 +225,9 @@ OptionDef sDeviceOptionDefs[] = {
     { "trace_log", kArgumentRequired, kDeviceOption_TraceLog },
     { "trace_decode", kArgumentRequired, kDeviceOption_TraceDecode },
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    { "session-key-log", kArgumentRequired, kDeviceOption_SessionKeyLog },
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 #if CHIP_CONFIG_USE_ACCESS_RESTRICTIONS
     { "commissioning-arl-entries", kArgumentRequired, kDeviceOption_CommissioningArlEntries },
     { "arl-entries", kArgumentRequired, kDeviceOption_ArlEntries },
@@ -403,6 +409,11 @@ const char * sDeviceOptionHelp =
     "  --trace_decode <1/0>\n"
     "       A value of 1 enables traces decoding, 0 disables this (default 0).\n"
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    "  --session-key-log <file>\n"
+    "       Append message encryption keys to <file> so captured traffic can be decrypted.\n"
+    "       Exposes secret keys: use only with test credentials.\n"
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 #if CHIP_CONFIG_USE_ACCESS_RESTRICTIONS
     "  --commissioning-arl-entries <CommissioningARL JSON>\n"
     "       Enable ACL cluster access restrictions used during commissioning with the provided JSON. Example:\n"
@@ -798,6 +809,12 @@ bool HandleOption(const char * aProgram, OptionSet * aOptions, int aIdentifier, 
         }
         break;
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    case kDeviceOption_SessionKeyLog:
+        LinuxDeviceOptions::GetInstance().sessionKeyLogFile = aValue;
+        break;
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 #if CHIP_CONFIG_USE_ACCESS_RESTRICTIONS
     // TODO(#35189): change to use a path to JSON files instead

@@ -37,6 +37,10 @@
 #include "TraceHandlers.h"
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
 
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+#include <SessionKeyLogFile.h> // nogncheck
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
+
 std::map<CHIPCommand::CommissionerIdentity, std::unique_ptr<chip::Controller::DeviceCommissioner>> CHIPCommand::mCommissioners;
 std::set<CHIPCommand *> CHIPCommand::sDeferredCleanups;
 
@@ -49,6 +53,12 @@ constexpr chip::FabricId kIdentityGammaFabricId = 3;
 constexpr chip::FabricId kIdentityOtherFabricId = 4;
 constexpr char kPAATrustStorePathVariable[]     = "CHIPTOOL_PAA_TRUST_STORE_PATH";
 constexpr char kCDTrustStorePathVariable[]      = "CHIPTOOL_CD_TRUST_STORE_PATH";
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+namespace {
+chip::SessionKeyLogFile sSessionKeyLogFile;
+} // namespace
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 const chip::Credentials::AttestationTrustStore * CHIPCommand::sTrustStore                 = nullptr;
 chip::Credentials::DeviceAttestationRevocationDelegate * CHIPCommand::sRevocationDelegate = nullptr;
@@ -115,6 +125,10 @@ CHIP_ERROR CHIPCommand::MaybeSetUpStack()
     }
 
     StartTracing();
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    ReturnLogErrorOnFailure(StartSessionKeyLog());
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 #if (CHIP_DEVICE_LAYER_TARGET_LINUX || CHIP_DEVICE_LAYER_TARGET_TIZEN) && CHIP_DEVICE_CONFIG_ENABLE_CHIPOBLE
     // By default, Linux device is configured as a BLE peripheral while the controller needs a BLE central.
@@ -231,6 +245,10 @@ void CHIPCommand::MaybeTearDownStack()
         ShutdownCommissioner(commissioner.first);
     }
 
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    StopSessionKeyLog();
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
+
     StopTracing();
 }
 
@@ -273,7 +291,15 @@ CHIP_ERROR CHIPCommand::EnsureCommissionerForIdentity(std::string identity)
 
 CHIP_ERROR CHIPCommand::Run()
 {
-    ReturnErrorOnFailure(MaybeSetUpStack());
+    CHIP_ERROR setUpErr = MaybeSetUpStack();
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    if (setUpErr != CHIP_NO_ERROR)
+    {
+        // A partially set-up stack is not torn down, so stop exporting keys here.
+        StopSessionKeyLog();
+    }
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
+    ReturnErrorOnFailure(setUpErr);
 
     CHIP_ERROR err = StartWaiting(GetWaitDuration());
 
@@ -328,6 +354,22 @@ void CHIPCommand::StartTracing()
     }
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
 }
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+CHIP_ERROR CHIPCommand::StartSessionKeyLog()
+{
+    VerifyOrReturnError(mSessionKeyLogFile.HasValue(), CHIP_NO_ERROR);
+    ReturnErrorOnFailure(sSessionKeyLogFile.Open(mSessionKeyLogFile.Value()));
+    chip::Crypto::SetSessionKeyLogDelegate(&sSessionKeyLogFile);
+    return CHIP_NO_ERROR;
+}
+
+void CHIPCommand::StopSessionKeyLog()
+{
+    chip::Crypto::SetSessionKeyLogDelegate(nullptr);
+    sSessionKeyLogFile.Close();
+}
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 void CHIPCommand::StopTracing()
 {

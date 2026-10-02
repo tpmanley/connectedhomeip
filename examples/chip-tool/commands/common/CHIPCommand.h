@@ -96,6 +96,11 @@ public:
         AddArgument("trace_decode", 0, 1, &mTraceDecode);
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
         AddArgument("trace-to", &mTraceTo, "Trace destinations, comma-separated (" SUPPORTED_COMMAND_LINE_TRACING_TARGETS ")");
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+        AddArgument("session-key-log", &mSessionKeyLogFile,
+                    "Append message encryption keys to this file so captured traffic can be decrypted. Exposes secret keys: use "
+                    "only with test credentials.");
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
         AddArgument("ble-controller", 0, UINT16_MAX, &mBleAdapterId,
                     "BLE controller selector, see example or platform docs for details");
         AddArgument("storage-directory", &mStorageDirectory,
@@ -266,6 +271,13 @@ private:
 
     void StartTracing();
     void StopTracing();
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    CHIP_ERROR StartSessionKeyLog();
+    void StopSessionKeyLog();
+
+    chip::Optional<char *> mSessionKeyLogFile;
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 #if CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
     chip::Optional<char *> mTraceFile;

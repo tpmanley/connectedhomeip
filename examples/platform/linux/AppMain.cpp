@@ -83,6 +83,10 @@
 #include <TracingCommandLineArgument.h> // nogncheck
 #endif
 
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+#include <SessionKeyLogFile.h> // nogncheck
+#endif
+
 #if CHIP_DEVICE_CONFIG_ENABLE_SOFTWARE_DIAGNOSTIC_TRIGGER
 #include <app/clusters/software-diagnostics-server/SoftwareDiagnosticsTestEventTriggerHandler.h>
 #endif
@@ -185,6 +189,10 @@ namespace {
 // are enabled, we put the WiFi network commissioning cluster on
 // secondaryNetworkCommissioningEndpoint.
 Optional<EndpointId> sSecondaryNetworkCommissioningEndpoint;
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+SessionKeyLogFile sSessionKeyLogFile;
+#endif
 
 #if CHIP_DEVICE_LAYER_TARGET_LINUX
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
@@ -613,6 +621,16 @@ int ChipLinuxAppInit(int argc, char * const argv[], OptionSet * customOptions,
 
     err = ParseArguments(argc, argv, customOptions);
     SuccessOrExit(err);
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    // Open the key log before initializing the stack, so a bad path fails cleanly and no keys are missed.
+    if (LinuxDeviceOptions::GetInstance().sessionKeyLogFile.has_value())
+    {
+        err = sSessionKeyLogFile.Open(LinuxDeviceOptions::GetInstance().sessionKeyLogFile->c_str());
+        SuccessOrExit(err);
+        Crypto::SetSessionKeyLogDelegate(&sSessionKeyLogFile);
+    }
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 #if CHIP_DEVICE_CONFIG_ENABLE_WIFIPAF
     if (LinuxDeviceOptions::GetInstance().mWiFiPAF)
@@ -1145,6 +1163,11 @@ void ChipLinuxAppMainLoop(chip::ServerInitParams & initParams, AppMainLoopImplem
 #endif // CHIP_DEVICE_CONFIG_ENABLE_BOTH_COMMISSIONER_AND_COMMISSIONEE
 
     DeviceLayer::PlatformMgr().Shutdown();
+
+#if CHIP_CRYPTO_SESSION_KEY_LOG
+    Crypto::SetSessionKeyLogDelegate(nullptr);
+    sSessionKeyLogFile.Close();
+#endif // CHIP_CRYPTO_SESSION_KEY_LOG
 
 #if ENABLE_TRACING
     tracing_setup.StopTracing();

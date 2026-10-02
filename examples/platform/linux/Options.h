@@ -99,6 +99,7 @@ struct LinuxDeviceOptions
     bool traceStreamToLogEnabled  = false;
     chip::Optional<std::string> traceStreamFilename;
 #endif // CHIP_CONFIG_TRANSPORT_TRACE_ENABLED
+    std::optional<std::string> sessionKeyLogFile;
     chip::Credentials::DeviceAttestationCredentialsProvider * dacProvider = nullptr;
     chip::CSRResponseOptions mCSRResponseOptions;
     uint8_t testEventTriggerEnableKey[16] = { 0 };
